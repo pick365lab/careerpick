@@ -23,10 +23,10 @@ const envVars = envContent.split('\n').reduce((acc, line) => {
 
 console.log("Found keys in .env.local:", Object.keys(envVars));
 
-const API_KEY = envVars.GEMINI_API_KEY || envVars.GOOGLE_API_KEY;
+const API_KEY = envVars.GOOGLE_API_KEY;
 
 if (!API_KEY) {
-    console.error("Error: GEMINI_API_KEY not found in .env.local");
+    console.error("Error: GOOGLE_API_KEY not found in .env.local");
     process.exit(1);
 }
 
@@ -49,12 +49,12 @@ async function run() {
             console.log(models);
 
             if (models.length > 0) {
-                console.log("\nTrying generation with gemini-2.5-flash...");
+                console.log("\nTrying generation with gemini-1.5-flash...");
                 // Note: The model name in the list usually starts with "models/"
                 // We need to be careful about how we construct the URL.
-                // If the user wants "gemini-2.5-flash", let's try that specific string first if it's not in the list.
+                // If the user wants "gemini-1.5-flash", let's try that specific string first if it's not in the list.
 
-                const modelName = "gemini-2.5-flash";
+                const modelName = "gemini-1.5-flash";
                 const genUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
 
                 console.log(`POST to ${genUrl}`);
