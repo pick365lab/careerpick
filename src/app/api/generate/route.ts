@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request: Request) {
     try {
         const { prompt: inputPrompt, resumeText, jdText, format, tone } = await request.json();
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.GOOGLE_API_KEY;
 
         if (!apiKey) {
             return new Response(JSON.stringify({ error: 'Gemini API Key is missing' }), { status: 500 });
@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
         const model = new ChatGoogleGenerativeAI({
             apiKey: apiKey,
-            model: 'gemini-1.5-flash',
+            model: 'gemini-2.5-flash',
             streaming: true,
             temperature: 0.7,
         });
