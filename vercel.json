@@ -1,0 +1,12 @@
+{
+    "framework": "nextjs",
+    "regions": [
+        "icn1"
+    ],
+    "env": {
+        "GEMINI_API_KEY": "@gemini_api_key",
+        "NEXT_PUBLIC_SUPABASE_URL": "@supabase_url",
+        "SUPABASE_SERVICE_ROLE_KEY": "@supabase_service_key",
+        "DATABASE_URL": "@database_url"
+    }
+}
