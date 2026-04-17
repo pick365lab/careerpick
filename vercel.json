@@ -2,10 +2,5 @@
     "framework": "nextjs",
     "regions": [
         "icn1"
-    ],
-    "env": {
-        "GOOGLE_API_KEY": "AIzaSyDeglaNe-S8uF1bNAGPx9LfmtaFI1IiQps",
-        "NEXT_PUBLIC_SUPABASE_URL": "https://dxoglineuafkmnravxqr.supabase.co",
-        "SUPABASE_SERVICE_ROLE_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR4b2dsaW5ldWFma21ucmF2eHFyIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NDQzMDI1NCwiZXhwIjoyMDgwMDA2MjU0fQ.zO772MXGXxLQNTjFshBtaoet4VyYG-qxFVg06YuCYLQ"
-    }
+    ]
 }

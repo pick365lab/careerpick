@@ -3,46 +3,41 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCompletion } from 'ai/react';
-import { Sparkles, BookOpen, Moon, Sun } from 'lucide-react';
+import { Sparkles, BookOpen, Moon, Sun, Copy, Check, RotateCcw, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { AdPlaceholder } from '@/components/AdPlaceholder';
 import { Guide } from '@/components/Guide';
 
-// Types
 type OutputFormat = 'bullet' | 'interview' | 'cover_letter';
 type Tone = 'professional' | 'friendly' | 'formal';
+
+// ─── 애드센스 컴포넌트 (slot ID 발급 후 교체) ──────────────────
+function AdSenseBanner({ className = '' }: { className?: string }) {
+    return (
+        <div className={`w-full flex items-center justify-center ${className}`}>
+            {/* 애드센스 코드 삽입 위치 — publisher ID 설정 후 아래 주석 해제
+            <ins className="adsbygoogle"
+                style={{ display: 'block' }}
+                data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
+                data-ad-slot="XXXXXXXXXX"
+                data-ad-format="auto"
+                data-full-width-responsive="true" />
+            */}
+            <div className="w-full h-[90px] bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
+                <span className="text-xs text-gray-400">애드센스 광고 (slot 준비 중)</span>
+            </div>
+        </div>
+    );
+}
 
 export default function Home() {
     const [activeTab, setActiveTab] = useState<'create' | 'guide'>('create');
     const [isDark, setIsDark] = useState(false);
     const [mounted, setMounted] = useState(false);
-    const [visitorCount, setVisitorCount] = useState(0); // Initialize to 0 or null to prevent hydration mismatch
+    const [visitorCount, setVisitorCount] = useState(0);
+    const [copied, setCopied] = useState(false);
+    const [feedback, setFeedback] = useState<'like' | 'dislike' | null>(null);
 
-    useEffect(() => {
-        setMounted(true);
-        // Fetch visitor count from API
-        const fetchCount = async () => {
-            try {
-                const res = await fetch('/api/stats');
-                const data = await res.json();
-                setVisitorCount(data.count);
-            } catch (error) {
-                console.error('Failed to fetch visitor count:', error);
-                setVisitorCount(1611); // Fallback
-            }
-        };
-        fetchCount();
-
-        // Listen for switchTab event from Guide component
-        const handleSwitchTab = (e: CustomEvent) => {
-            if (e.detail === 'create') {
-                setActiveTab('create');
-            }
-        };
-        window.addEventListener('switchTab', handleSwitchTab as EventListener);
-        return () => window.removeEventListener('switchTab', handleSwitchTab as EventListener);
-    }, []);
-
-    // Wizard states
+    // 3-step wizard: 1=입력, 2=옵션, 3=결과
     const [step, setStep] = useState(1);
     const [resumeText, setResumeText] = useState('');
     const [jdText, setJdText] = useState('');
@@ -51,129 +46,154 @@ export default function Home() {
 
     const { complete, completion, isLoading } = useCompletion({
         api: '/api/generate',
-        onError: (error) => {
-            console.error(error);
-            alert('생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
-        },
+        onError: () => alert('생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'),
     });
 
+    useEffect(() => {
+        setMounted(true);
+        fetch('/api/stats')
+            .then((r) => r.json())
+            .then((d) => setVisitorCount(d.count))
+            .catch(() => setVisitorCount(1611));
+
+        const handleSwitchTab = (e: CustomEvent) => {
+            if (e.detail === 'create') setActiveTab('create');
+        };
+        window.addEventListener('switchTab', handleSwitchTab as EventListener);
+        return () => window.removeEventListener('switchTab', handleSwitchTab as EventListener);
+    }, []);
+
     const handleGenerate = async () => {
-        setStep(4);
-        await complete('', {
-            body: {
-                resumeText,
-                jdText,
-                format,
-                tone,
-            },
-        });
+        setStep(3);
+        setFeedback(null);
+        await complete('', { body: { resumeText, jdText, format, tone } });
     };
 
     const handleRestart = () => {
         setStep(1);
         setResumeText('');
         setJdText('');
+        setCopied(false);
+        setFeedback(null);
     };
 
-    const bgClass = isDark ? 'bg-[#0b0f19] text-white' : 'bg-white text-gray-900';
-    const borderClass = isDark ? 'border-white/10' : 'border-gray-300';
-    const cardBg = isDark ? 'bg-white/5' : 'bg-white';
-    const textMuted = isDark ? 'text-gray-400' : 'text-gray-700';
+    const handleCopy = () => {
+        navigator.clipboard.writeText(completion);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
 
-    // Prevent hydration mismatch by rendering nothing on server or initial client render
-    if (!mounted) {
-        return null;
-    }
+    // ─── 테마 클래스 ───────────────────────────────────────────
+    const bg = isDark ? 'bg-[#0b0f19] text-white' : 'bg-gray-50 text-gray-900';
+    const border = isDark ? 'border-white/10' : 'border-gray-200';
+    const card = isDark ? 'bg-white/5' : 'bg-white';
+    const muted = isDark ? 'text-gray-400' : 'text-gray-500';
+    const inputCls = `w-full p-4 rounded-xl border-2 ${border} ${isDark ? 'bg-black/20 text-white placeholder:text-gray-500' : 'bg-white text-gray-900 placeholder:text-gray-400'} resize-y text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors`;
+
+    if (!mounted) return null;
+
+    const totalSteps = 3;
+    const stepLabels = ['경력 + JD 입력', '출력 옵션', 'AI 결과'];
 
     return (
-        <div className={`min-h-screen flex flex-col relative overflow-hidden ${bgClass} transition-colors duration-300`}>
-            {/* Background */}
+        <div className={`min-h-screen flex flex-col relative overflow-hidden ${bg} transition-colors duration-300`}>
+            {/* 배경 그라디언트 */}
             <div className={`fixed inset-0 bg-gradient-radial from-blue-900/20 via-transparent to-transparent pointer-events-none transition-opacity duration-300 ${isDark ? 'opacity-100' : 'opacity-0'}`} />
 
-            {/* Header */}
-            <header className={`sticky top-0 z-50 w-full border-b ${borderClass} ${isDark ? 'bg-[#0b0f19]/95' : 'bg-white/95'} backdrop-blur transition-colors`}>
-                <div className="container mx-auto flex h-14 items-center justify-between px-4">
-                    <div className="flex items-center space-x-2 font-bold text-xl">
-                        <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">CareerFlow</span>
+            {/* ── 헤더 ──────────────────────────────────────────── */}
+            <header className={`sticky top-0 z-50 w-full border-b ${border} ${isDark ? 'bg-[#0b0f19]/95' : 'bg-white/95'} backdrop-blur transition-colors`}>
+                <div className="max-w-5xl mx-auto flex h-14 items-center justify-between px-4">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">
+                            커리픽
+                        </span>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-white/10 text-gray-300' : 'bg-blue-50 text-blue-600'}`}>
+                            AI 이력서
+                        </span>
                     </div>
                     <button
                         onClick={() => setIsDark(!isDark)}
                         className={`p-2 rounded-full ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'} transition-colors`}
-                        aria-label="Toggle theme"
+                        aria-label="다크모드 전환"
                     >
                         {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                     </button>
                 </div>
             </header>
 
-            <main className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 relative z-10">
-                <div className="w-full max-w-4xl mx-auto space-y-8">
+            <main className="flex-1 flex flex-col items-center p-4 md:p-8 relative z-10">
+                <div className="w-full max-w-5xl mx-auto space-y-6">
 
-                    {/* Top Ads Grid */}
+                    {/* ── 상단 광고 (HSAD Zine + 애드센스) ─────────── */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <AdPlaceholder label="HSAD Zine - 마케팅 인사이트" imageSrc="/hsad_main.png" href="https://blog.hsad.co.kr/" isDark={isDark} />
-                        <AdPlaceholder label="프리미엄 채용 공고" isDark={isDark} />
+                        <AdPlaceholder
+                            label="HSAD Zine - 마케팅 인사이트"
+                            imageSrc="/hsad_main.png"
+                            href="https://blog.hsad.co.kr/"
+                            isDark={isDark}
+                        />
+                        <AdPlaceholder label="광고 문의" isDark={isDark} />
                     </div>
 
-                    {/* Hero Section */}
-                    <div className="text-center space-y-6">
+                    {/* ── 히어로 ────────────────────────────────────── */}
+                    <div className="text-center space-y-4 py-6">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.6, ease: "easeOut" }}
-                            className="space-y-2"
+                            transition={{ duration: 0.5 }}
                         >
-                            <h1 className={`text-4xl md:text-5xl font-bold tracking-tight ${isDark ? 'bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60' : ''}`}>
-                                CareerFlow AI
+                            <h1 className={`text-3xl md:text-5xl font-bold tracking-tight mb-3 ${isDark ? 'bg-gradient-to-b from-white to-white/60 bg-clip-text text-transparent' : ''}`}>
+                                당신의 경력은 훌륭합니다.
                             </h1>
-                            <p className={`${textMuted} text-lg max-w-xl mx-auto`}>
-                                Professional resume optimization powered by advanced AI.
+                            <p className="text-xl md:text-2xl font-semibold text-blue-500 mb-3">
+                                표현만 다듬으면 됩니다.
+                            </p>
+                            <p className={`text-base ${muted} max-w-xl mx-auto`}>
+                                경력과 채용 공고를 붙여넣으면, AI가 30초 안에 맞춤형 이력서·면접 준비·자소서를 만들어드립니다.
                             </p>
                         </motion.div>
-
-                        {/* Tab Switcher */}
                         <motion.div
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2, duration: 0.5 }}
-                            className="flex justify-center"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ delay: 0.3 }}
+                            className={`text-sm ${muted}`}
                         >
-                            <div className={`${cardBg} backdrop-blur-lg border ${borderClass} p-1 rounded-full inline-flex`}>
-                                <button
-                                    onClick={() => setActiveTab('create')}
-                                    className={`relative px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 z-10 ${activeTab === 'create' ? (isDark ? 'text-white' : 'text-blue-700') : `${textMuted} hover:${isDark ? 'text-white' : 'text-gray-900'}`
-                                        }`}
-                                >
-                                    <Sparkles className="w-4 h-4" />
-                                    <span>Builder</span>
-                                    {activeTab === 'create' && (
-                                        <motion.div
-                                            layoutId="activeTab"
-                                            className={`absolute inset-0 ${isDark ? 'bg-white/10' : 'bg-blue-100'} rounded-full border ${borderClass} shadow-sm -z-10`}
-                                            transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                                        />
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('guide')}
-                                    className={`relative px-6 py-2 rounded-full text-sm font-medium transition-all duration-300 flex items-center gap-2 z-10 ${activeTab === 'guide' ? (isDark ? 'text-white' : 'text-blue-700') : `${textMuted} hover:${isDark ? 'text-white' : 'text-gray-900'}`
-                                        }`}
-                                >
-                                    <BookOpen className="w-4 h-4" />
-                                    <span>Guide</span>
-                                    {activeTab === 'guide' && (
-                                        <motion.div
-                                            layoutId="activeTab"
-                                            className={`absolute inset-0 ${isDark ? 'bg-white/10' : 'bg-blue-100'} rounded-full border ${borderClass} shadow-sm -z-10`}
-                                            transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                                        />
-                                    )}
-                                </button>
-                            </div>
+                            <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
+                            오늘 <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>{visitorCount.toLocaleString('ko-KR')}</span>명이 이용했습니다
                         </motion.div>
                     </div>
 
-                    {/* Content Area */}
+                    {/* ── 탭 (Builder / 가이드) ─────────────────────── */}
+                    <div className="flex justify-center">
+                        <div className={`${card} border ${border} p-1 rounded-full inline-flex backdrop-blur-lg`}>
+                            {[
+                                { key: 'create', icon: <Sparkles className="w-4 h-4" />, label: '이력서 만들기' },
+                                { key: 'guide',  icon: <BookOpen  className="w-4 h-4" />, label: '작성 가이드' },
+                            ].map((tab) => (
+                                <button
+                                    key={tab.key}
+                                    onClick={() => setActiveTab(tab.key as 'create' | 'guide')}
+                                    className={`relative px-5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
+                                        activeTab === tab.key
+                                            ? isDark ? 'text-white' : 'text-blue-700'
+                                            : muted
+                                    }`}
+                                >
+                                    {tab.icon}
+                                    {tab.label}
+                                    {activeTab === tab.key && (
+                                        <motion.div
+                                            layoutId="activeTab"
+                                            className={`absolute inset-0 ${isDark ? 'bg-white/10' : 'bg-blue-100'} rounded-full border ${border} shadow-sm -z-10`}
+                                            transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                                        />
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ── 메인 콘텐츠 ──────────────────────────────── */}
                     <AnimatePresence mode="wait">
                         {activeTab === 'create' ? (
                             <motion.div
@@ -181,26 +201,38 @@ export default function Home() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.4 }}
-                                className="w-full"
+                                transition={{ duration: 0.35 }}
                             >
-                                <div className={`${cardBg} backdrop-blur-xl border ${borderClass} rounded-2xl p-6 md:p-8 shadow-2xl`}>
-                                    {/* Step Indicator */}
-                                    <div className="mb-8 flex justify-between items-center text-sm">
-                                        <div className={textMuted}>Step {step} of 4</div>
-                                        <div className="flex gap-1">
-                                            {[1, 2, 3, 4].map((s) => (
-                                                <div
-                                                    key={s}
-                                                    className={`h-1 w-8 rounded-full transition-colors ${s <= step ? 'bg-blue-500' : (isDark ? 'bg-gray-700' : 'bg-gray-300')
-                                                        }`}
-                                                />
-                                            ))}
+                                <div className={`${card} border ${border} rounded-2xl p-6 md:p-8 shadow-xl`}>
+
+                                    {/* 단계 표시 */}
+                                    <div className="mb-6 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            {stepLabels.map((label, i) => {
+                                                const s = i + 1;
+                                                const active = s === step;
+                                                const done = s < step;
+                                                return (
+                                                    <div key={s} className="flex items-center gap-1">
+                                                        <div className={`w-6 h-6 rounded-full text-xs font-bold flex items-center justify-center transition-colors ${
+                                                            done   ? 'bg-blue-500 text-white' :
+                                                            active ? 'bg-blue-500 text-white ring-4 ring-blue-500/20' :
+                                                                     isDark ? 'bg-white/10 text-gray-400' : 'bg-gray-200 text-gray-500'
+                                                        }`}>{done ? '✓' : s}</div>
+                                                        <span className={`text-xs hidden sm:inline ${active ? (isDark ? 'text-white' : 'text-gray-800') : muted}`}>
+                                                            {label}
+                                                        </span>
+                                                        {s < totalSteps && <div className={`w-6 h-px ${s < step ? 'bg-blue-500' : isDark ? 'bg-white/20' : 'bg-gray-200'}`} />}
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
+                                        <span className={`text-xs ${muted}`}>{step}/{totalSteps}</span>
                                     </div>
 
-                                    {/* Wizard Steps */}
                                     <AnimatePresence mode="wait">
+
+                                        {/* ═══ STEP 1: 경력 + JD 동시 입력 ═══ */}
                                         {step === 1 && (
                                             <motion.div
                                                 key="step1"
@@ -209,78 +241,149 @@ export default function Home() {
                                                 exit={{ opacity: 0, x: -20 }}
                                                 className="space-y-6"
                                             >
-                                                <div className="space-y-2">
-                                                    <h2 className="text-2xl font-bold">나의 경력 입력</h2>
-                                                    <p className={textMuted}>
-                                                        현재 가지고 있는 이력서 내용이나 경력 사항을 자유롭게 입력해주세요.<br />
-                                                        줄글, 개조식 상관없이 입력하시면 됩니다.
-                                                    </p>
+                                                <div>
+                                                    <h2 className="text-xl font-bold mb-1">경력 정보와 채용 공고 입력</h2>
+                                                    <p className={`text-sm ${muted}`}>두 항목을 모두 입력하면 AI가 채용 공고에 딱 맞는 문서를 만들어 드립니다.</p>
                                                 </div>
-                                                <textarea
-                                                    value={resumeText}
-                                                    onChange={(e) => setResumeText(e.target.value)}
-                                                    placeholder={`예시:
-- 2020.03 ~ 2023.02 OO회사 마케팅팀 대리
-- SNS 채널 운영 및 콘텐츠 기획
-- 월간 활성 사용자(MAU) 30% 증대 달성
-...`}
-                                                    className={`w-full min-h-[300px] p-4 rounded-lg border-2 ${borderClass} ${isDark ? 'bg-black/20 text-white placeholder:text-gray-500' : 'bg-white/90 text-black placeholder:text-gray-600'} resize-y text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                                                />
+
+                                                {/* ─ 2-column 입력 ─ */}
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                    {/* 왼쪽: 내 경력 */}
+                                                    <div className="space-y-2">
+                                                        <label className="font-semibold text-sm flex items-center gap-1">
+                                                            <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-xs flex items-center justify-center font-bold">1</span>
+                                                            내 경력 · 이력서
+                                                        </label>
+                                                        <textarea
+                                                            value={resumeText}
+                                                            onChange={(e) => setResumeText(e.target.value)}
+                                                            placeholder={`현재 경력 또는 이력서 내용을 자유롭게 붙여넣으세요.\n\n예시)\n- 2021.03 ~ 2024.02 OO회사 마케팅팀 대리\n- SNS 채널 운영 및 콘텐츠 기획\n- 월간 활성 사용자(MAU) 30% 증가 달성`}
+                                                            className={`${inputCls} min-h-[280px]`}
+                                                        />
+                                                        <p className={`text-xs ${muted}`}>줄글·개조식·복붙 모두 OK</p>
+                                                    </div>
+
+                                                    {/* 오른쪽: JD */}
+                                                    <div className="space-y-2">
+                                                        <label className="font-semibold text-sm flex items-center gap-1">
+                                                            <span className="w-5 h-5 rounded-full bg-violet-500 text-white text-xs flex items-center justify-center font-bold">2</span>
+                                                            지원할 채용 공고 (JD)
+                                                        </label>
+                                                        <textarea
+                                                            value={jdText}
+                                                            onChange={(e) => setJdText(e.target.value)}
+                                                            placeholder={`지원하려는 채용 공고의 주요 업무·자격요건을 붙여넣으세요.\n\n예시)\n[주요 업무]\n- 디지털 마케팅 기획 및 운영\n- 데이터 기반 성과 분석\n\n[자격요건]\n- 3년 이상 마케팅 경력\n- SQL 사용 가능자 우대`}
+                                                            className={`${inputCls} min-h-[280px]`}
+                                                        />
+                                                        <p className={`text-xs ${muted}`}>공고 URL보다 텍스트 복붙이 정확합니다</p>
+                                                    </div>
+                                                </div>
+
                                                 <div className="flex justify-end">
                                                     <button
                                                         onClick={() => setStep(2)}
-                                                        disabled={!resumeText.trim()}
-                                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                        disabled={!resumeText.trim() || !jdText.trim()}
+                                                        className="px-7 py-2.5 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                                                     >
-                                                        다음 단계로
+                                                        다음 단계
+                                                        <span>→</span>
                                                     </button>
                                                 </div>
                                             </motion.div>
                                         )}
 
+                                        {/* ═══ STEP 2: 출력 옵션 ═══ */}
                                         {step === 2 && (
                                             <motion.div
                                                 key="step2"
                                                 initial={{ opacity: 0, x: 20 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 exit={{ opacity: 0, x: -20 }}
-                                                className="space-y-6"
+                                                className="space-y-8"
                                             >
-                                                <div className="space-y-2">
-                                                    <h2 className="text-2xl font-bold">목표 직무 설명(JD) 입력</h2>
-                                                    <p className={textMuted}>
-                                                        지원하려는 공고의 직무 설명을 붙여넣어주세요.
-                                                    </p>
+                                                <div>
+                                                    <h2 className="text-xl font-bold mb-1">출력 형식과 톤 선택</h2>
+                                                    <p className={`text-sm ${muted}`}>어떤 형태의 문서가 필요하신가요?</p>
                                                 </div>
-                                                <textarea
-                                                    value={jdText}
-                                                    onChange={(e) => setJdText(e.target.value)}
-                                                    placeholder={`예시:
-[자격요건]
-- 디지털 마케팅 3년 이상 경험자
-- SNS 채널 운영 경험 필수
-- 데이터 기반 의사결정 능력
-...`}
-                                                    className={`w-full min-h-[300px] p-4 rounded-lg border-2 ${borderClass} ${isDark ? 'bg-black/20 text-white placeholder:text-gray-500' : 'bg-white text-black placeholder:text-gray-600'} resize-y text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                                                />
-                                                <div className="flex justify-between">
+
+                                                {/* 출력 형식 */}
+                                                <div className="space-y-3">
+                                                    <p className="font-semibold text-sm">📄 결과물 형식</p>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                        {[
+                                                            { v: 'bullet',       icon: '📝', label: '개조식 이력서',   desc: 'JD 맞춤 bullet point 경력 기술서' },
+                                                            { v: 'interview',    icon: '🎤', label: '면접 Q&A',       desc: 'STAR 기법 예상 질문 5개 + 모범 답변' },
+                                                            { v: 'cover_letter', icon: '✉️', label: '자기소개서',     desc: '서사형 자소서 — 바로 복붙 가능' },
+                                                        ].map(({ v, icon, label, desc }) => (
+                                                            <button
+                                                                key={v}
+                                                                onClick={() => setFormat(v as OutputFormat)}
+                                                                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                                                                    format === v
+                                                                        ? 'border-blue-500 bg-blue-500/10'
+                                                                        : `${border} ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`
+                                                                }`}
+                                                            >
+                                                                <span className="text-xl">{icon}</span>
+                                                                <p className="font-bold mt-2 text-sm">{label}</p>
+                                                                <p className={`text-xs mt-1 ${muted}`}>{desc}</p>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* 톤 선택 */}
+                                                <div className="space-y-3">
+                                                    <p className="font-semibold text-sm">🎨 톤 앤 매너</p>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                        {[
+                                                            { v: 'professional', icon: '🎯', label: '전문적',   desc: '간결하고 성과 중심' },
+                                                            { v: 'friendly',     icon: '😊', label: '친근한',   desc: '따뜻하고 인간적인 표현' },
+                                                            { v: 'formal',       icon: '👔', label: '공식적',   desc: '격식 있고 정중한 표현' },
+                                                        ].map(({ v, icon, label, desc }) => (
+                                                            <button
+                                                                key={v}
+                                                                onClick={() => setTone(v as Tone)}
+                                                                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                                                                    tone === v
+                                                                        ? 'border-violet-500 bg-violet-500/10'
+                                                                        : `${border} ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'}`
+                                                                }`}
+                                                            >
+                                                                <span className="text-xl">{icon}</span>
+                                                                <p className="font-bold mt-2 text-sm">{label}</p>
+                                                                <p className={`text-xs mt-1 ${muted}`}>{desc}</p>
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex justify-between gap-3">
                                                     <button
                                                         onClick={() => setStep(1)}
-                                                        className={`px-6 py-2 border ${borderClass} rounded-lg hover:${isDark ? 'bg-white/5' : 'bg-gray-100'} transition-colors`}
+                                                        className={`px-5 py-2.5 border-2 ${border} rounded-xl font-medium transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}
                                                     >
-                                                        이전
+                                                        ← 이전
                                                     </button>
                                                     <button
-                                                        onClick={() => setStep(3)}
-                                                        disabled={!jdText.trim()}
-                                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                        onClick={handleGenerate}
+                                                        disabled={isLoading}
+                                                        className="px-7 py-2.5 bg-gradient-to-r from-blue-600 to-violet-600 text-white rounded-xl font-semibold hover:opacity-90 disabled:opacity-40 transition-all flex items-center gap-2 shadow-lg shadow-blue-500/20"
                                                     >
-                                                        다음 단계로
+                                                        {isLoading ? (
+                                                            <>
+                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                                생성 중...
+                                                            </>
+                                                        ) : (
+                                                            <>✨ AI로 만들기</>
+                                                        )}
                                                     </button>
                                                 </div>
                                             </motion.div>
                                         )}
 
+                                        {/* ═══ STEP 3: 결과 ═══ */}
                                         {step === 3 && (
                                             <motion.div
                                                 key="step3"
@@ -289,131 +392,89 @@ export default function Home() {
                                                 exit={{ opacity: 0, x: -20 }}
                                                 className="space-y-6"
                                             >
-                                                <div className="space-y-2">
-                                                    <h2 className="text-2xl font-bold">출력 형식 선택</h2>
-                                                    <p className={textMuted}>원하는 형식과 톤을 선택해주세요.</p>
-                                                </div>
-
-                                                <div className="space-y-4">
+                                                <div className="flex items-center justify-between">
                                                     <div>
-                                                        <label className="block mb-2 font-semibold">출력 형식</label>
-                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                            {[
-                                                                { value: 'bullet', label: '개조식 이력서', desc: '성과 중심 bullet point' },
-                                                                { value: 'interview', label: '면접 Q&A', desc: '예상 질문 + 모범 답변' },
-                                                                { value: 'cover_letter', label: '자기소개서', desc: '서사형 자기소개서' }
-                                                            ].map((item) => (
-                                                                <button
-                                                                    key={item.value}
-                                                                    onClick={() => setFormat(item.value as OutputFormat)}
-                                                                    className={`p-4 rounded-lg border ${borderClass} text-left transition-all ${format === item.value
-                                                                        ? 'border-blue-500 bg-blue-500/10'
-                                                                        : isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'
-                                                                        }`}
-                                                                >
-                                                                    <span className="font-semibold block">{item.label}</span>
-                                                                    <span className={`text-sm ${textMuted} block`}>{item.desc}</span>
-                                                                </button>
-                                                            ))}
-                                                        </div>
+                                                        <h2 className="text-xl font-bold">
+                                                            {isLoading ? '✨ AI가 작성 중입니다...' : '✅ 완성되었습니다!'}
+                                                        </h2>
+                                                        <p className={`text-sm ${muted} mt-0.5`}>
+                                                            {isLoading ? '잠시만 기다려주세요 (약 10~30초)' : '결과를 복사하여 바로 사용하세요'}
+                                                        </p>
                                                     </div>
-
-                                                    <div>
-                                                        <label className="block mb-2 font-semibold">톤 앤 매너</label>
-                                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                                            {[
-                                                                { value: 'professional', label: '🎯 전문적', desc: '간결하고 명확한 표현' },
-                                                                { value: 'friendly', label: '😊 친근한', desc: '따뜻하고 인간적인 표현' },
-                                                                { value: 'formal', label: '👔 공식적', desc: '격식있고 정중한 표현' }
-                                                            ].map((item) => (
-                                                                <button
-                                                                    key={item.value}
-                                                                    onClick={() => setTone(item.value as Tone)}
-                                                                    className={`p-4 rounded-lg border ${borderClass} text-left transition-all ${tone === item.value
-                                                                        ? 'border-blue-500 bg-blue-500/10'
-                                                                        : isDark ? 'hover:bg-white/5' : 'hover:bg-gray-50'
-                                                                        }`}
-                                                                >
-                                                                    <span className="font-semibold block">{item.label}</span>
-                                                                    <span className={`text-sm ${textMuted} block`}>{item.desc}</span>
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex justify-between">
-                                                    <button
-                                                        onClick={() => setStep(2)}
-                                                        className={`px-6 py-2 border ${borderClass} rounded-lg hover:${isDark ? 'bg-white/5' : 'bg-gray-100'} transition-colors`}
-                                                    >
-                                                        이전
-                                                    </button>
-                                                    <button
-                                                        onClick={handleGenerate}
-                                                        disabled={isLoading}
-                                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                                                    >
-                                                        {isLoading ? (
-                                                            <>
-                                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                                                                생성 중...
-                                                            </>
-                                                        ) : (
-                                                            '✨ AI로 생성하기'
-                                                        )}
-                                                    </button>
-                                                </div>
-                                                {isLoading && <AdPlaceholder label="로딩 중 광고 (높은 주목도)" className="h-[200px]" isDark={isDark} />}
-                                            </motion.div>
-                                        )}
-
-                                        {step === 4 && (
-                                            <motion.div
-                                                key="step4"
-                                                initial={{ opacity: 0, x: 20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: -20 }}
-                                                className="space-y-6"
-                                            >
-                                                <div className="space-y-2">
-                                                    <h2 className="text-2xl font-bold">✨ 최적화 완료!</h2>
-                                                    <p className={textMuted}>AI가 생성한 결과를 확인하세요.</p>
-                                                </div>
-
-                                                <div className={`p-6 rounded-lg border-2 ${borderClass} ${isDark ? 'bg-black/20 text-white' : 'bg-gray-50 text-black'}`}>
-                                                    {isLoading ? (
-                                                        <div className="flex items-center justify-center py-12">
-                                                            <div className="w-8 h-8 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-                                                        </div>
-                                                    ) : completion ? (
-                                                        <div className="whitespace-pre-wrap leading-relaxed">{completion}</div>
-                                                    ) : (
-                                                        <div className={`text-center py-12 ${textMuted}`}>결과를 기다리는 중...</div>
+                                                    {!isLoading && completion && (
+                                                        <button
+                                                            onClick={handleCopy}
+                                                            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                                                                copied
+                                                                    ? 'bg-green-500 text-white'
+                                                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                                            }`}
+                                                        >
+                                                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                                                            {copied ? '복사됨!' : '전체 복사'}
+                                                        </button>
                                                     )}
                                                 </div>
 
+                                                {/* 결과 박스 */}
+                                                <div className={`rounded-xl border-2 ${isLoading ? border : 'border-blue-500/30'} ${isDark ? 'bg-black/20' : 'bg-blue-50/30'} min-h-[320px] p-5 relative`}>
+                                                    {isLoading && !completion ? (
+                                                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+                                                            <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+                                                            <p className={`text-sm ${muted}`}>AI가 분석 중입니다...</p>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="whitespace-pre-wrap leading-relaxed text-sm">{completion}</div>
+                                                    )}
+                                                </div>
+
+                                                {/* 생성 중 인피드 광고 */}
+                                                {isLoading && (
+                                                    <AdPlaceholder label="광고" isDark={isDark} className="h-[90px]" />
+                                                )}
+
+                                                {/* 피드백 */}
+                                                {!isLoading && completion && (
+                                                    <div className="flex flex-col items-center gap-3">
+                                                        <p className={`text-sm ${muted}`}>결과가 도움이 되었나요?</p>
+                                                        <div className="flex gap-2">
+                                                            {[
+                                                                { type: 'like' as const,    icon: <ThumbsUp className="w-4 h-4" />,   active: 'bg-green-500 text-white border-green-500' },
+                                                                { type: 'dislike' as const, icon: <ThumbsDown className="w-4 h-4" />, active: 'bg-red-500 text-white border-red-500' },
+                                                            ].map(({ type, icon, active }) => (
+                                                                <button
+                                                                    key={type}
+                                                                    onClick={() => setFeedback(type)}
+                                                                    className={`p-2 rounded-full border-2 transition-all ${feedback === type ? active : `${border} ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}`}
+                                                                >
+                                                                    {icon}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* 하단 버튼 */}
                                                 <div className="flex justify-between gap-3">
                                                     <button
                                                         onClick={handleRestart}
-                                                        className={`px-6 py-2 border ${borderClass} rounded-lg hover:${isDark ? 'bg-white/5' : 'bg-gray-100'} transition-colors`}
+                                                        className={`flex items-center gap-2 px-5 py-2.5 border-2 ${border} rounded-xl font-medium transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}
                                                     >
+                                                        <RotateCcw className="w-4 h-4" />
                                                         처음부터 다시
                                                     </button>
-                                                    {completion && (
+                                                    {!isLoading && completion && (
                                                         <button
-                                                            onClick={() => {
-                                                                navigator.clipboard.writeText(completion);
-                                                                alert('클립보드에 복사되었습니다!');
-                                                            }}
-                                                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                                            onClick={() => setStep(2)}
+                                                            className={`px-5 py-2.5 border-2 ${border} rounded-xl font-medium transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-gray-100'}`}
                                                         >
-                                                            📋 결과 복사하기
+                                                            형식 바꿔서 재생성
                                                         </button>
                                                     )}
                                                 </div>
                                             </motion.div>
                                         )}
+
                                     </AnimatePresence>
                                 </div>
                             </motion.div>
@@ -423,41 +484,66 @@ export default function Home() {
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 exit={{ opacity: 0, y: -20 }}
-                                transition={{ duration: 0.4 }}
+                                transition={{ duration: 0.35 }}
                             >
                                 <Guide count={visitorCount} />
                             </motion.div>
                         )}
                     </AnimatePresence>
 
-                    {/* Bottom Ads Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
-                        <AdPlaceholder label="직무 교육 추천" isDark={isDark} />
-                        <AdPlaceholder label="BrandBrief" imageSrc="/brandbrief.png" href="https://www.brandbrief.co.kr/" isDark={isDark} />
+                    {/* ── 하단 광고 (BrandBrief + 애드센스) ────────── */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                        <AdPlaceholder
+                            label="BrandBrief"
+                            imageSrc="/brandbrief.png"
+                            href="https://www.brandbrief.co.kr/"
+                            isDark={isDark}
+                        />
+                        <AdPlaceholder label="광고 문의" isDark={isDark} />
                     </div>
+
+                    {/* ── 애드센스 배너 (하단) ─────────────────────── */}
+                    <AdSenseBanner className="mt-2" />
+
                 </div>
             </main>
 
-            {/* Footer */}
-            <footer className={`border-t ${borderClass} ${isDark ? 'bg-[#0b0f19]/50' : 'bg-gray-50'} backdrop-blur transition-colors`}>
-                <div className="container mx-auto py-8 px-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+            {/* ── 푸터 ──────────────────────────────────────────── */}
+            <footer className={`border-t ${border} ${isDark ? 'bg-[#0b0f19]/50' : 'bg-white'} mt-4 transition-colors`}>
+                <div className="max-w-5xl mx-auto py-10 px-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
                         <div>
-                            <h3 className="text-lg font-semibold mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">CareerFlow</h3>
-                            <p className={`text-sm ${textMuted} mb-4`}>
-                                복잡한 경력 기술을 AI가 직무에 딱 맞게,<br />
-                                가장 매력적인 언어로 재설계합니다.
+                            <h3 className="text-base font-bold mb-2 bg-gradient-to-r from-blue-500 to-violet-500 bg-clip-text text-transparent">
+                                커리픽 (CareerPick)
+                            </h3>
+                            <p className={`text-sm ${muted} leading-relaxed`}>
+                                경력과 채용 공고를 붙여넣으면<br />
+                                AI가 맞춤형 이력서를 완성합니다.
                             </p>
-                            <p className={`text-sm ${textMuted}`}>
-                                취업컨설팅/강의/광고 문의: docblog@naver.com
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold mb-2">이용 안내</p>
+                            <ul className={`text-sm ${muted} space-y-1`}>
+                                <li>• 완전 무료로 이용할 수 있습니다</li>
+                                <li>• 입력 정보는 저장되지 않습니다</li>
+                                <li>• AI 생성 결과는 참고용입니다</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <p className="text-sm font-semibold mb-2">문의 · 광고</p>
+                            <p className={`text-sm ${muted}`}>docblog@naver.com</p>
+                            <p className={`text-xs ${muted} mt-2 leading-relaxed`}>
+                                광고 게재, 취업 컨설팅 연계,<br />
+                                제휴 문의 환영합니다.
                             </p>
                         </div>
                     </div>
-                    <div className={`pt-8 border-t ${borderClass} text-center text-sm ${textMuted}`}>
-                        © {new Date().getFullYear()} CareerFlow. All rights reserved.
+                    <div className={`pt-6 border-t ${border} text-center text-xs ${muted}`}>
+                        © {new Date().getFullYear()} 커리픽 (CareerPick). All rights reserved.
                     </div>
                 </div>
             </footer>
+
         </div>
     );
 }
