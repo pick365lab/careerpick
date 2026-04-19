@@ -23,7 +23,7 @@ export const AdPlaceholder = ({ label, className, imageSrc, href, isDark = false
             ) : (
                 <>
                     <span className={`text-sm font-semibold ${textMuted}`}>광고 문의</span>
-                    <span className="text-xs text-gray-500">docblog@naver.com</span>
+                    <span className="text-xs text-gray-500">pick365lab@gmail.com</span>
                 </>
             )}
         </div>

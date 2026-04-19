@@ -10,7 +10,7 @@ export function Footer() {
                             가장 매력적인 언어로 재설계합니다.
                         </p>
                         <p className="text-sm text-gray-400">
-                            문의: docblog@naver.com
+                            문의: pick365lab@gmail.com
                         </p>
                     </div>
                 </div>

@@ -36,6 +36,8 @@ export default function Home() {
     const [visitorCount, setVisitorCount] = useState(0);
     const [copied, setCopied] = useState(false);
     const [feedback, setFeedback] = useState<'like' | 'dislike' | null>(null);
+    const [feedbackText, setFeedbackText] = useState('');
+    const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
     // 3-step wizard: 1=입력, 2=옵션, 3=결과
     const [step, setStep] = useState(1);
@@ -75,6 +77,18 @@ export default function Home() {
         setJdText('');
         setCopied(false);
         setFeedback(null);
+        setFeedbackText('');
+        setFeedbackSubmitted(false);
+    };
+
+    const handleFeedbackSubmit = async () => {
+        if (!feedback && !feedbackText.trim()) return;
+        setFeedbackSubmitted(true);
+        await fetch('/api/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rating: feedback, comment: feedbackText }),
+        }).catch(() => {});
     };
 
     const handleCopy = () => {
@@ -435,22 +449,53 @@ export default function Home() {
 
                                                 {/* 피드백 */}
                                                 {!isLoading && completion && (
-                                                    <div className="flex flex-col items-center gap-3">
-                                                        <p className={`text-sm ${muted}`}>결과가 도움이 되었나요?</p>
-                                                        <div className="flex gap-2">
-                                                            {[
-                                                                { type: 'like' as const,    icon: <ThumbsUp className="w-4 h-4" />,   active: 'bg-green-500 text-white border-green-500' },
-                                                                { type: 'dislike' as const, icon: <ThumbsDown className="w-4 h-4" />, active: 'bg-red-500 text-white border-red-500' },
-                                                            ].map(({ type, icon, active }) => (
-                                                                <button
-                                                                    key={type}
-                                                                    onClick={() => setFeedback(type)}
-                                                                    className={`p-2 rounded-full border-2 transition-all ${feedback === type ? active : `${border} ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`}`}
-                                                                >
-                                                                    {icon}
-                                                                </button>
-                                                            ))}
-                                                        </div>
+                                                    <div className={`rounded-xl border ${border} ${isDark ? 'bg-white/3' : 'bg-gray-50'} p-5 space-y-4`}>
+                                                        {feedbackSubmitted ? (
+                                                            <p className={`text-sm text-center ${muted}`}>
+                                                                의견 감사합니다! 더 좋은 서비스로 보답할게요.
+                                                            </p>
+                                                        ) : (
+                                                            <>
+                                                                <div>
+                                                                    <p className="text-sm font-medium">개선할 점이 있다면 알려주세요</p>
+                                                                    <p className={`text-xs ${muted} mt-0.5`}>짧은 한 마디도 커리픽을 만드는 데 큰 힘이 됩니다.</p>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    {[
+                                                                        { type: 'like' as const,    icon: <ThumbsUp className="w-4 h-4" />,   label: '도움됐어요', active: 'bg-green-500 text-white border-green-500' },
+                                                                        { type: 'dislike' as const, icon: <ThumbsDown className="w-4 h-4" />, label: '아쉬워요',   active: 'bg-red-400 text-white border-red-400' },
+                                                                    ].map(({ type, icon, label, active }) => (
+                                                                        <button
+                                                                            key={type}
+                                                                            onClick={() => setFeedback(prev => prev === type ? null : type)}
+                                                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border-2 text-xs font-medium transition-all ${
+                                                                                feedback === type
+                                                                                    ? active
+                                                                                    : `${border} ${isDark ? 'hover:bg-white/10' : 'hover:bg-gray-100'}`
+                                                                            }`}
+                                                                        >
+                                                                            {icon}{label}
+                                                                        </button>
+                                                                    ))}
+                                                                </div>
+                                                                <textarea
+                                                                    value={feedbackText}
+                                                                    onChange={(e) => setFeedbackText(e.target.value)}
+                                                                    placeholder="결과물 품질, 불편한 점, 추가됐으면 하는 기능 등 자유롭게 남겨주세요."
+                                                                    rows={3}
+                                                                    className={`w-full p-3 rounded-lg border ${border} ${isDark ? 'bg-black/20 text-white placeholder:text-gray-500' : 'bg-white text-gray-900 placeholder:text-gray-400'} text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors`}
+                                                                />
+                                                                <div className="flex justify-end">
+                                                                    <button
+                                                                        onClick={handleFeedbackSubmit}
+                                                                        disabled={!feedback && !feedbackText.trim()}
+                                                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                                    >
+                                                                        의견 남기기
+                                                                    </button>
+                                                                </div>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 )}
 
@@ -531,7 +576,7 @@ export default function Home() {
                         </div>
                         <div>
                             <p className="text-sm font-semibold mb-2">문의 · 광고</p>
-                            <p className={`text-sm ${muted}`}>docblog@naver.com</p>
+                            <p className={`text-sm ${muted}`}>pick365lab@gmail.com</p>
                             <p className={`text-xs ${muted} mt-2 leading-relaxed`}>
                                 광고 게재, 취업 컨설팅 연계,<br />
                                 제휴 문의 환영합니다.
