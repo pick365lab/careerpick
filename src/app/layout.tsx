@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import './globals.css';
 import { Providers } from './providers';
 
@@ -35,6 +36,13 @@ export default function RootLayout({
             </head>
             <body>
                 <Providers>{children}</Providers>
+                <Script src="https://www.googletagmanager.com/gtag/js?id=G-1BKDMP0QGM" strategy="afterInteractive" />
+                <Script id="ga4" strategy="afterInteractive">{`
+                    window.dataLayer = window.dataLayer || [];
+                    function gtag(){dataLayer.push(arguments);}
+                    gtag('js', new Date());
+                    gtag('config', 'G-1BKDMP0QGM');
+                `}</Script>
             </body>
         </html>
     );
