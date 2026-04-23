@@ -85,7 +85,7 @@ export async function POST(request: Request) {
                 'X-Title': '커리픽 CareerPick',
             },
             body: JSON.stringify({
-                model: 'tencent/hy3-preview:free',
+                model: 'meta-llama/llama-3.3-70b-instruct:free',
                 messages: [{ role: 'user', content: prompt }],
                 stream: true,
             }),
