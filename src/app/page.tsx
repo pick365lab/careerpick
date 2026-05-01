@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCompletion } from 'ai/react';
 import { Sparkles, BookOpen, Moon, Sun, Copy, Check, RotateCcw, ThumbsUp, ThumbsDown } from 'lucide-react';
+import Link from 'next/link';
 import { AdPlaceholder } from '@/components/AdPlaceholder';
 import { Guide } from '@/components/Guide';
 
@@ -22,7 +23,7 @@ function AdSenseBanner({ className = '' }: { className?: string }) {
                 data-ad-format="auto"
                 data-full-width-responsive="true" />
             */}
-            <div className="w-full h-[90px] bg-gray-100 dark:bg-gray-800 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center">
+            <div className="w-full h-[90px] bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center">
                 <span className="text-xs text-gray-400">애드센스 광고 (slot 준비 중)</span>
             </div>
         </div>
@@ -163,17 +164,8 @@ export default function Home() {
                                 표현만 다듬으면 됩니다.
                             </p>
                             <p className={`text-base ${muted} max-w-xl mx-auto`}>
-                                경력과 채용 공고를 붙여넣으면, AI가 30초 안에 맞춤형 이력서·면접 준비·자소서를 만들어드립니다.
+                                경력과 채용 공고를 붙여넣으면,<br />AI가 30초 안에 맞춤형 이력서·면접 준비·자소서를 만들어드립니다.
                             </p>
-                        </motion.div>
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.3 }}
-                            className={`text-sm ${muted}`}
-                        >
-                            <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
-                            오늘 <span className={`font-bold ${isDark ? 'text-white' : 'text-gray-800'}`}>{visitorCount.toLocaleString('ko-KR')}</span>명이 이용했습니다
                         </motion.div>
                     </div>
 
@@ -583,8 +575,12 @@ export default function Home() {
                             </p>
                         </div>
                     </div>
-                    <div className={`pt-6 border-t ${border} text-center text-xs ${muted}`}>
-                        © {new Date().getFullYear()} 커리픽 (CareerPick). All rights reserved.
+                    <div className={`pt-6 border-t ${border} flex flex-col sm:flex-row items-center justify-between gap-2 text-xs ${muted}`}>
+                        <span>© {new Date().getFullYear()} 커리픽 (CareerPick) · pick365lab. All rights reserved.</span>
+                        <div className="flex gap-4">
+                            <Link href="/privacy" className="hover:underline">개인정보처리방침</Link>
+                            <Link href="/terms" className="hover:underline">이용약관</Link>
+                        </div>
                     </div>
                 </div>
             </footer>

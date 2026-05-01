@@ -12,7 +12,7 @@ export const AdPlaceholder = ({ label, className, imageSrc, href, isDark = false
     const textMuted = isDark ? 'text-gray-400' : 'text-gray-700';
 
     const content = (
-        <div className={`w-full h-[100px] relative overflow-hidden flex flex-col items-center justify-center border-2 border-dashed ${isDark ? 'border-gray-700 bg-gray-800/50' : 'border-gray-300 bg-gray-100'} rounded-lg ${className}`}>
+        <div className={`w-full h-[100px] relative overflow-hidden flex flex-col items-center justify-center ${isDark ? 'bg-gray-800/50' : 'bg-gray-100'} rounded-lg ${className}`}>
             {imageSrc ? (
                 <>
                     <img src={imageSrc} alt={label} className="absolute inset-0 w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity" />
