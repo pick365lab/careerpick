@@ -1,8 +1,4 @@
-interface GuideProps {
-    count: number;
-}
-
-export function Guide({ count }: GuideProps) {
+export function Guide() {
     return (
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl space-y-12">
             {/* Hero */}
@@ -20,10 +16,6 @@ export function Guide({ count }: GuideProps) {
                 >
                     지금 바로 무료로 시작하기
                 </button>
-                <div className="text-sm text-gray-400">
-                    <span className="inline-block w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></span>
-                    오늘 <span className="font-bold">{count.toLocaleString('ko-KR')}</span>명의 지원자가 이 서비스를 통해 서류 합격률을 높였습니다.
-                </div>
             </div>
 
             {/* Guide Steps */}
@@ -60,6 +52,21 @@ export function Guide({ count }: GuideProps) {
                             이력서를 확인하고 복사하세요.
                         </p>
                     </div>
+                </div>
+            </div>
+
+            {/* 데모 영상 */}
+            <div>
+                <h2 className="text-2xl font-bold text-center mb-6">이렇게 사용하세요</h2>
+                <div className="rounded-xl overflow-hidden shadow-xl">
+                    <video
+                        src="/demo.mp4"
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        className="w-full"
+                    />
                 </div>
             </div>
         </div>

@@ -523,7 +523,7 @@ export default function Home() {
                                 exit={{ opacity: 0, y: -20 }}
                                 transition={{ duration: 0.35 }}
                             >
-                                <Guide count={visitorCount} />
+                                <Guide />
                             </motion.div>
                         )}
                     </AnimatePresence>
